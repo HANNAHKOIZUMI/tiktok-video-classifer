@@ -26,7 +26,7 @@ if uploaded_file is not None:
     MAX_TEXT_FEATURES = 128  # Adjusted for reasonable text input size
 
     # Define the path to the saved model
-    model_path = '/workspaces/tiktok-video-classifer/hybrid_model.pkl'  # Ensure the path is correct
+    model_path = './hybrid_model.pkl'  # Ensure the path is correct
 
     # Load the model using pickle
     with open(model_path, 'rb') as file:
