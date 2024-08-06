@@ -30,8 +30,10 @@ if uploaded_file is not None:
 
     # Load and initialize the model
     model_name = "distilbert-base-uncased"
+    # Load the model
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=3)
     model.load_state_dict(torch.load('hybrid_model.pth', map_location=torch.device('cpu')))
+
 
     # Move the model to the appropriate device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
