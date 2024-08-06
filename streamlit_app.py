@@ -4,6 +4,7 @@ import torch
 import cv2
 import numpy as np
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import whisper
 
 # Streamlit setup
 st.title("TikTok Video Classifier")
@@ -22,10 +23,10 @@ if uploaded_file is not None:
     N_FRAMES = 3
     HEIGHT = 112
     WIDTH = 112
-    MAX_TEXT_FEATURES = 3
+    MAX_TEXT_FEATURES = 128  # Adjusted for reasonable text input size
 
     # Define the path to the saved model
-    model_path = '/workspaces/tiktok-video-classifer/hybrid_model.pth'
+    model_path = 'hybrid_model.pth'  # Ensure the path is correct
 
     # Load and initialize the model
     model_name = "distilbert-base-uncased"
@@ -68,6 +69,20 @@ if uploaded_file is not None:
 
         return np.array(frames)
 
+    def transcribe_video(video_path):
+        """
+        Transcribe audio from a video using Whisper.
+
+        Args:
+            video_path (str): Path to the video file.
+
+        Returns:
+            str: Transcribed text.
+        """
+        model = whisper.load_model("base")  # You can choose "tiny", "base", "small", "medium", or "large"
+        result = model.transcribe(video_path)
+        return result['text']
+
     def analyze_video(video_path, model, text_features):
         """
         Analyze a video and return the predicted class and confidence.
@@ -103,14 +118,15 @@ if uploaded_file is not None:
 
         return predicted_class, confidence
 
-    # Example text input
-    text_features = "Example text feature"
+    # Transcribe the uploaded video
+    text_features = transcribe_video(temp_file_path)
 
     # Analyze the uploaded video
     predicted_class, confidence = analyze_video(temp_file_path, model, text_features)
 
     # Display the results
     st.write(f"Predicted class: {predicted_class}, Confidence: {confidence:.2f}")
+    st.write(f"Transcription: {text_features}")
 
 else:
     st.write("No file uploaded yet.")
