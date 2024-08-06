@@ -1,9 +1,9 @@
 import streamlit as st
 import tempfile
-import torch
 import cv2
 import numpy as np
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import pickle
+from transformers import AutoTokenizer
 import whisper
 
 # Streamlit setup
@@ -26,21 +26,14 @@ if uploaded_file is not None:
     MAX_TEXT_FEATURES = 128  # Adjusted for reasonable text input size
 
     # Define the path to the saved model
-    model_path = '/workspaces/tiktok-video-classifer/hybrid_model.pth'  # Ensure the path is correct
+    model_path = '/workspaces/tiktok-video-classifer/hybrid_model.pkl'  # Ensure the path is correct
 
-    # Load and initialize the model
-    model_name = "distilbert-base-uncased"
-    # Load the model
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=3)
-    model.load_state_dict(torch.load('hybrid_model.pth', map_location=torch.device('cpu')))
-
-
-    # Move the model to the appropriate device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-    model.eval()  # Set the model to evaluation mode
+    # Load the model using pickle
+    with open(model_path, 'rb') as file:
+        model = pickle.load(file)
 
     # Initialize the tokenizer
+    model_name = "distilbert-base-uncased"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     def preprocess_video(video_path, n_frames):
@@ -91,7 +84,7 @@ if uploaded_file is not None:
 
         Args:
             video_path (str): Path to the video file.
-            model (torch.nn.Module): Pretrained model for classification.
+            model (sklearn.base.BaseEstimator): Pretrained model for classification.
             text_features (str): Additional text features.
 
         Returns:
@@ -102,23 +95,22 @@ if uploaded_file is not None:
         video_frames = preprocess_video(video_path, N_FRAMES)
         video_frames = np.expand_dims(video_frames, axis=0)  # Add batch dimension
 
-        # Convert video frames to PyTorch tensor
-        video_frames_tensor = torch.tensor(video_frames, dtype=torch.float32).permute(0, 4, 1, 2, 3).to(device)  # (N, C, T, H, W)
+        # Flatten the video frames to use them as features (you might need to adjust this based on your model input)
+        video_features = video_frames.flatten()
 
         # Tokenize text features
         encoded_text = tokenizer(text_features, padding='max_length', truncation=True, max_length=MAX_TEXT_FEATURES, return_tensors='pt')
-        input_ids = encoded_text['input_ids'].to(device)
-        attention_mask = encoded_text['attention_mask'].to(device)
+        input_ids = encoded_text['input_ids'].flatten().numpy()  # Flatten and convert to numpy
+        attention_mask = encoded_text['attention_mask'].flatten().numpy()
 
-        # Make predictions
-        with torch.no_grad():
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits.cpu().numpy()
+        # Combine video and text features
+        combined_features = np.concatenate([video_features, input_ids, attention_mask])
 
-        predicted_class = np.argmax(logits, axis=-1)[0]
-        confidence = logits[0][predicted_class]
+        # Make predictions using the loaded model
+        prediction = model.predict([combined_features])[0]
+        confidence = max(model.predict_proba([combined_features])[0])
 
-        return predicted_class, confidence
+        return prediction, confidence
 
     # Transcribe the uploaded video
     text_features = transcribe_video(temp_file_path)
