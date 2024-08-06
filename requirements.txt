@@ -2,4 +2,6 @@ streamlit
 torch
 torchvision
 transformers
+openai-whisper
 opencv-python-headless
+ffmpeg-python
