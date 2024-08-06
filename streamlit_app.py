@@ -26,7 +26,7 @@ if uploaded_file is not None:
     MAX_TEXT_FEATURES = 128  # Adjusted for reasonable text input size
 
     # Define the path to the saved model
-    model_path = 'hybrid_model.pth'  # Ensure the path is correct
+    model_path = '/workspaces/tiktok-video-classifer/hybrid_model.pth'  # Ensure the path is correct
 
     # Load and initialize the model
     model_name = "distilbert-base-uncased"
