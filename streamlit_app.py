@@ -8,29 +8,28 @@ import whisper
 
 # Streamlit setup
 st.title("TikTok Video Classifier")
-st.write("To get started, upload a video file below.")
+st.write("To get started, upload a video file and a model file below.")
 
 # File uploader for video
-uploaded_file = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
+uploaded_video = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
-if uploaded_file is not None:
+# File uploader for model
+uploaded_model = st.file_uploader("Upload a model file", type="pkl")
+
+if uploaded_video is not None and uploaded_model is not None:
     # Create a temporary file to store the uploaded video
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-        temp_file.write(uploaded_file.read())
-        temp_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
+        temp_video_file.write(uploaded_video.read())
+        temp_video_path = temp_video_file.name
+
+    # Load the model using pickle
+    model = pickle.load(uploaded_model)
 
     # Constants
     N_FRAMES = 3
     HEIGHT = 112
     WIDTH = 112
     MAX_TEXT_FEATURES = 128  # Adjusted for reasonable text input size
-
-    # Define the path to the saved model
-    model_path = './hybrid_model.pkl'  # Ensure the path is correct
-
-    # Load the model using pickle
-    with open(model_path, 'rb') as file:
-        model = pickle.load(file)
 
     # Initialize the tokenizer
     model_name = "distilbert-base-uncased"
@@ -113,14 +112,17 @@ if uploaded_file is not None:
         return prediction, confidence
 
     # Transcribe the uploaded video
-    text_features = transcribe_video(temp_file_path)
+    text_features = transcribe_video(temp_video_path)
 
     # Analyze the uploaded video
-    predicted_class, confidence = analyze_video(temp_file_path, model, text_features)
+    predicted_class, confidence = analyze_video(temp_video_path, model, text_features)
 
     # Display the results
     st.write(f"Predicted class: {predicted_class}, Confidence: {confidence:.2f}")
     st.write(f"Transcription: {text_features}")
 
 else:
-    st.write("No file uploaded yet.")
+    if not uploaded_video:
+        st.write("No video file uploaded yet.")
+    if not uploaded_model:
+        st.write("No model file uploaded yet.")
