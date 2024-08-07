@@ -10,7 +10,9 @@ import wave
 import contextlib
 import math
 from moviepy.editor import AudioFileClip
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoTokenizer
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import pickle
 
 # Define the video transcriber class
 class VideoTranscriber:
@@ -109,27 +111,26 @@ def process_in_batches(texts, model, tokenizer, batch_size, device):
 # Initialize the Streamlit app
 def main():
     st.title("Video Transcription and Sentiment Analysis App")
-    st.write("Upload a BERT model file and a video file to perform sentiment analysis on the transcription.")
+    st.write("Upload a BERT model file (.pkl) and video files to perform sentiment analysis on the transcriptions.")
 
     # File uploader for the BERT model
-    uploaded_model_file = st.file_uploader("Upload a BERT model (.pth) file", type=["pth"])
+    uploaded_model_file = st.file_uploader("Upload a BERT model (.pkl) file", type=["pkl"])
 
     # File uploader for videos
     uploaded_videos = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
 
     if uploaded_model_file and uploaded_videos:
         # Save the uploaded model to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as temp_model_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_model_file:
             temp_model_file.write(uploaded_model_file.read())
             model_path = temp_model_file.name
 
-        # Load the pretrained BERT model and tokenizer
-        model_name = "distilbert-base-uncased"
-        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=3)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        # Load the tokenizer
+        tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
         # Load the trained model state from the uploaded file
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
