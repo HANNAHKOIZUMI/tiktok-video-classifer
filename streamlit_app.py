@@ -5,6 +5,16 @@ import numpy as np
 from transformers import AutoTokenizer
 import whisper
 from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import Layer
+
+# Define the custom layer
+class ResizeVideo(Layer):
+    def __init__(self, **kwargs):
+        super(ResizeVideo, self).__init__(**kwargs)
+
+    def call(self, inputs):
+        # Implement the resizing logic here
+        return inputs
 
 # Streamlit setup
 st.title("TikTok Video Classifier")
@@ -28,8 +38,8 @@ if uploaded_video is not None and uploaded_model is not None:
             temp_model_file.write(uploaded_model.read())
             temp_model_path = temp_model_file.name
 
-        # Load the model using Keras
-        model = load_model(temp_model_path)
+        # Load the model using Keras with custom objects
+        model = load_model(temp_model_path, custom_objects={'ResizeVideo': ResizeVideo})
     except Exception as e:
         st.error(f"An error occurred while loading the model: {str(e)}")
         st.stop()
