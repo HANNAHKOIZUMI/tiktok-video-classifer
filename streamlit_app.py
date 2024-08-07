@@ -182,7 +182,6 @@ def main():
         # Make predictions
         predictions = model.predict([np.array([video_frames]), text_features])
         predicted_label = np.argmax(predictions, axis=1)[0]
-        confidence_score = predictions[0][predicted_label]  # Extract confidence score for the predicted label
 
         # Define sentiment classes
         sentiment_classes = ["Neutral", "Anti-Biden", "Pro-Biden"]
@@ -190,7 +189,6 @@ def main():
 
         # Display the sentiment results with confidence score
         st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
-        st.write(f"**Confidence Score:** {confidence_score:.2f}")
 
         # Clean up temporary files
         os.remove(temp_video_path)
