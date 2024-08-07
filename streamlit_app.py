@@ -9,7 +9,57 @@ import math
 from moviepy.editor import AudioFileClip
 from transformers import AutoTokenizer
 import tensorflow as tf
+from tensorflow.keras import layers, Sequential
+import einops
 import cv2
+
+# Define custom layers
+class Conv2Plus1D(layers.Layer):
+    def __init__(self, filters, kernel_size, padding):
+        super().__init__()
+        self.seq = Sequential([
+            layers.Conv3D(filters=filters, kernel_size=(1, kernel_size[1], kernel_size[2]), padding=padding),
+            layers.Conv3D(filters=filters, kernel_size=(kernel_size[0], 1, 1), padding=padding)
+        ])
+
+    def call(self, x):
+        return self.seq(x)
+
+class Project(layers.Layer):
+    def __init__(self, filters):
+        super().__init__()
+        self.conv = layers.Conv3D(filters, kernel_size=1)
+
+    def call(self, x):
+        return self.conv(x)
+
+class ResidualMain(layers.Layer):
+    def __init__(self, filters, kernel_size):
+        super().__init__()
+        self.seq = Sequential([
+            Conv2Plus1D(filters=filters, kernel_size=kernel_size, padding='same'),
+            layers.LayerNormalization(),
+            layers.ReLU(),
+            Conv2Plus1D(filters=filters, kernel_size=kernel_size, padding='same'),
+            layers.LayerNormalization()
+        ])
+
+    def call(self, x):
+        return self.seq(x)
+
+class ResizeVideo(layers.Layer):
+    def __init__(self, height, width):
+        super().__init__()
+        self.height = height
+        self.width = width
+        self.resizing_layer = layers.Resizing(self.height, self.width)
+
+    def call(self, video):
+        old_shape = einops.parse_shape(video, 'b t h w c')
+        images = einops.rearrange(video, 'b t h w c -> (b t) h w c')
+        images = self.resizing_layer(images)
+        videos = einops.rearrange(images, '(b t) h w c -> b t h w c', t=old_shape['t'])
+        return videos
 
 # Define the video transcriber class
 class VideoTranscriber:
@@ -89,7 +139,15 @@ def main():
             model_path = temp_model_file.name
 
         # Load the trained model from the uploaded file
-        model = tf.keras.models.load_model(model_path, custom_objects={"ResizeVideo": ResizeVideo, "Conv2Plus1D": Conv2Plus1D, "Project": Project, "ResidualMain": ResidualMain})
+        model = tf.keras.models.load_model(
+            model_path,
+            custom_objects={
+                "ResizeVideo": ResizeVideo,
+                "Conv2Plus1D": Conv2Plus1D,
+                "Project": Project,
+                "ResidualMain": ResidualMain
+            }
+        )
 
         # Initialize the tokenizer
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
