@@ -153,14 +153,15 @@ def main():
                 st.write("Transcription obtained, analyzing sentiment...")
                 sentiment_outputs = process_in_batches([transcription], model, tokenizer, batch_size=1, device=device)
                 predicted_label = np.argmax(sentiment_outputs, axis=1)[0]
-                sentiment = ["Negative", "Neutral", "Positive"][predicted_label]
-                st.write(f"**Sentiment:** {sentiment}")
+                sentiment_classes = ["Negative", "Neutral", "Positive"]
+                sentiment = sentiment_classes[predicted_label]
 
-            # Display the transcription results
-            st.write(f"**Video File:** {result['Video File']}")
-            st.write(f"**Length (seconds):** {result['Length (seconds)']}")
-            st.write("**Transcription:**")
-            st.write(result['Transcription'])
+                # Display the transcription and sentiment results
+                st.write(f"**Video File:** {result['Video File']}")
+                st.write(f"**Length (seconds):** {result['Length (seconds)']}")
+                st.write("**Transcription:**")
+                st.write(result['Transcription'])
+                st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
 
             # Clean up temporary video file
             os.remove(temp_video_path)
