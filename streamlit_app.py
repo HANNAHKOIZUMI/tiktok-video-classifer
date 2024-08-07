@@ -73,8 +73,8 @@ class VideoTranscriber:
 
 # Initialize the Streamlit app
 def main():
-    st.title("Video Transcription App")
-    st.write("Upload a video file to get its transcription.")
+    st.title("TikTok Video Classifier")
+    st.write("Upload a video file.")
 
     # File uploader for videos
     uploaded_files = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
