@@ -108,11 +108,11 @@ def process_in_batches(texts, model, tokenizer, batch_size, device):
 
     return np.concatenate(all_outputs, axis=0)
 
-def load_model_from_gzipped_pth(gzipped_model_path, model_class):
-    # Load the model from a gzipped .pth file
+def load_model_from_gzipped_pth(gzipped_model_path):
+    # Load the quantized model from a gzipped .pth file
     with gzip.open(gzipped_model_path, 'rb') as f:
         model_state_dict = torch.load(f, map_location=torch.device('cpu'))
-    model = model_class.from_pretrained("distilbert-base-uncased", num_labels=3)
+    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=3)
     model.load_state_dict(model_state_dict)
     return model
 
@@ -137,7 +137,7 @@ def main():
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
         # Load the trained model state from the uploaded file
-        model = load_model_from_gzipped_pth(gzipped_model_path, AutoModelForSequenceClassification)
+        model = load_model_from_gzipped_pth(gzipped_model_path)
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
@@ -152,4 +152,29 @@ def main():
                 temp_video_path = temp_video_file.name
 
             # Process the video file
-            result = transcriber.process
+            result = transcriber.process_video(temp_video_path, idx)
+
+            # Perform sentiment analysis on the transcription
+            transcription = result['Transcription']
+            if transcription:
+                st.write("Transcription obtained, analyzing sentiment...")
+                sentiment_outputs = process_in_batches([transcription], model, tokenizer, batch_size=1, device=device)
+                predicted_label = np.argmax(sentiment_outputs, axis=1)[0]
+                sentiment_classes = [0,1,2]
+                sentiment = sentiment_classes[predicted_label]
+
+                # Display the transcription and sentiment results
+                st.write(f"**Video File:** {uploaded_video.name}")
+                st.write(f"**Length (seconds):** {result['Length (seconds)']}")
+                st.write("**Transcription:**")
+                st.write(result['Transcription'])
+                st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
+
+            # Clean up temporary video file
+            os.remove(temp_video_path)
+
+        # Clean up the temporary model file
+        os.remove(gzipped_model_path)
+
+if __name__ == "__main__":
+    main()
