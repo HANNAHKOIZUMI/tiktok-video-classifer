@@ -189,7 +189,6 @@ def main():
 
         # Display the sentiment results with confidence score
         st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
-        st.write(f"**Confidence Score:** {confidence_score:.2f}")
 
         # Clean up temporary files
         os.remove(temp_video_path)
