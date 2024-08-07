@@ -183,7 +183,7 @@ def main():
         predicted_label = np.argmax(predictions, axis=1)[0]
 
         # Define sentiment classes
-        sentiment_classes = [0,1,2]
+        sentiment_classes = ["Neutral", "Anti-Biden", "Pro-Biden"]
         sentiment = sentiment_classes[predicted_label]
 
         # Display the sentiment results
