@@ -1,14 +1,18 @@
 import streamlit as st
+import torch
+from torch.utils.data import Dataset, DataLoader
+import numpy as np
+import pandas as pd
+import tempfile
+import os
 import speech_recognition as sr
 import wave
 import contextlib
 import math
-import os
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from moviepy.editor import AudioFileClip
-import tempfile
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+# Define the video transcriber class
 class VideoTranscriber:
     def __init__(self):
         self.data = []
@@ -16,7 +20,7 @@ class VideoTranscriber:
     def extract_audio(self, video_file, audio_file):
         # Extract audio from the video using moviepy
         audioclip = AudioFileClip(video_file)
-        audioclip.write_audiofile(audio_file)
+        audioclip.write_audiofile(audio_file, logger=None)  # Disable logging to avoid cluttering the output
 
     def get_audio_duration(self, audio_file):
         # Calculate the duration of the audio file
@@ -71,26 +75,85 @@ class VideoTranscriber:
         # Save results to a DataFrame
         return pd.DataFrame(self.data)
 
+# Define a PyTorch dataset class for sentiment analysis
+class SentimentDataset(Dataset):
+    def __init__(self, texts, tokenizer):
+        self.texts = texts
+        self.tokenizer = tokenizer
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = self.texts[idx]
+        encoded_text = self.tokenizer(text, padding='max_length', truncation=True, max_length=128, return_tensors='pt')
+        encoded_text = {key: value.squeeze(0) for key, value in encoded_text.items()}
+        return encoded_text
+
+# Define a function to process texts in batches
+def process_in_batches(texts, model, tokenizer, batch_size, device):
+    dataset = SentimentDataset(texts, tokenizer)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    all_outputs = []
+    model.eval()
+
+    with torch.no_grad():
+        for batch in dataloader:
+            inputs = {key: value.to(device) for key, value in batch.items()}
+            outputs = model(**inputs)
+            all_outputs.append(outputs.logits.cpu().numpy())
+
+    return np.concatenate(all_outputs, axis=0)
+
 # Initialize the Streamlit app
 def main():
-    st.title("TikTok Video Classifier")
-    st.write("Upload a video file.")
+    st.title("Video Transcription and Sentiment Analysis App")
+    st.write("Upload a BERT model file and a video file to perform sentiment analysis on the transcription.")
+
+    # File uploader for the BERT model
+    uploaded_model_file = st.file_uploader("Upload a BERT model (.pth) file", type=["pth"])
 
     # File uploader for videos
-    uploaded_files = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
+    uploaded_videos = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
 
-    if uploaded_files:
+    if uploaded_model_file and uploaded_videos:
+        # Save the uploaded model to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pth') as temp_model_file:
+            temp_model_file.write(uploaded_model_file.read())
+            model_path = temp_model_file.name
+
+        # Load the pretrained BERT model and tokenizer
+        model_name = "distilbert-base-uncased"
+        model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=3)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+        # Load the trained model state from the uploaded file
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model.to(device)
+
         # Initialize the transcriber
         transcriber = VideoTranscriber()
 
         # Process each uploaded video file
-        for idx, uploaded_file in enumerate(uploaded_files):
+        for idx, uploaded_video in enumerate(uploaded_videos):
             with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
-                temp_video_file.write(uploaded_file.read())
+                temp_video_file.write(uploaded_video.read())
                 temp_video_path = temp_video_file.name
 
             # Process the video file
             result = transcriber.process_video(temp_video_path, idx)
+
+            # Perform sentiment analysis on the transcription
+            transcription = result['Transcription']
+            if transcription:
+                st.write("Transcription obtained, analyzing sentiment...")
+                sentiment_outputs = process_in_batches([transcription], model, tokenizer, batch_size=1, device=device)
+                predicted_label = np.argmax(sentiment_outputs, axis=1)[0]
+                sentiment = ["Negative", "Neutral", "Positive"][predicted_label]
+                st.write(f"**Sentiment:** {sentiment}")
 
             # Display the transcription results
             st.write(f"**Video File:** {result['Video File']}")
@@ -100,6 +163,9 @@ def main():
 
             # Clean up temporary video file
             os.remove(temp_video_path)
+
+        # Clean up the temporary model file
+        os.remove(model_path)
 
 if __name__ == "__main__":
     main()
