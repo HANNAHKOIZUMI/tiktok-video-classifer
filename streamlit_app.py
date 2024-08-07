@@ -2,7 +2,6 @@ import streamlit as st
 import tempfile
 import cv2
 import numpy as np
-import pickle
 from transformers import AutoTokenizer
 import whisper
 from tensorflow.keras.models import load_model
@@ -15,7 +14,7 @@ st.write("To get started, upload a video file and a model file below.")
 uploaded_video = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
 # File uploader for model
-uploaded_model = st.file_uploader("Upload a model file", type="pkl")
+uploaded_model = st.file_uploader("Upload a model file", type="h5")  # Use .h5 extension for Keras models
 
 if uploaded_video is not None and uploaded_model is not None:
     # Create a temporary file to store the uploaded video
@@ -24,11 +23,13 @@ if uploaded_video is not None and uploaded_model is not None:
         temp_video_path = temp_video_file.name
 
     try:
-        # Load the model using pickle
-        model = pickle.load(uploaded_model)
-    except ModuleNotFoundError as e:
-        st.error(f"Failed to load the model. Missing module: {e.name}. Please ensure all dependencies are installed.")
-        st.stop()
+        # Save the uploaded model file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_model_file:
+            temp_model_file.write(uploaded_model.read())
+            temp_model_path = temp_model_file.name
+
+        # Load the model using Keras
+        model = load_model(temp_model_path)
     except Exception as e:
         st.error(f"An error occurred while loading the model: {str(e)}")
         st.stop()
@@ -91,7 +92,7 @@ if uploaded_video is not None and uploaded_model is not None:
 
         Args:
             video_path (str): Path to the video file.
-            model (sklearn.base.BaseEstimator): Pretrained model for classification.
+            model: Pretrained model for classification.
             text_features (str): Additional text features.
 
         Returns:
@@ -114,10 +115,11 @@ if uploaded_video is not None and uploaded_model is not None:
         combined_features = np.concatenate([video_features, input_ids, attention_mask])
 
         # Make predictions using the loaded model
-        prediction = model.predict([combined_features])[0]
-        confidence = max(model.predict_proba([combined_features])[0])
+        prediction = model.predict(np.array([combined_features]))[0]
+        predicted_class = np.argmax(prediction)
+        confidence = np.max(prediction)
 
-        return prediction, confidence
+        return predicted_class, confidence
 
     # Transcribe the uploaded video
     text_features = transcribe_video(temp_video_path)
