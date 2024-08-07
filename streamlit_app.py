@@ -170,8 +170,8 @@ def main():
         text_features = np.array(encoded_text['input_ids']).squeeze()
 
         # Adjust text features to match the expected input shape (reduce to 3 features)
-        # You can use the mean of embeddings or some other reduction strategy based on training
-        text_features = text_features[:3]  # For demonstration, reduce to 3 features
+        # Use a simple reduction strategy, such as mean pooling
+        text_features = np.mean(text_features.reshape(-1, 42), axis=1)[:3]
         text_features = text_features.reshape((1, 3))
 
         # Preprocess video frames
@@ -181,13 +181,13 @@ def main():
         # Make predictions
         predictions = model.predict([np.array([video_frames]), text_features])
         predicted_label = np.argmax(predictions, axis=1)[0]
-        confidence_score = np.max(predictions)
+        confidence_score = predictions[0][predicted_label]  # Extract confidence score for the predicted label
 
         # Define sentiment classes
         sentiment_classes = ["Neutral", "Anti-Biden", "Pro-Biden"]
         sentiment = sentiment_classes[predicted_label]
 
-        # Display the sentiment results
+        # Display the sentiment results with confidence score
         st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
         st.write(f"**Confidence Score:** {confidence_score:.2f}")
 
