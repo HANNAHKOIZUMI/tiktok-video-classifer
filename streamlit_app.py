@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 from transformers import AutoTokenizer
 import whisper
+from tensorflow.keras.models import load_model
 
 # Streamlit setup
 st.title("TikTok Video Classifier")
