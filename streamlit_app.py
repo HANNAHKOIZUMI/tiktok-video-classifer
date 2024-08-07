@@ -1,8 +1,6 @@
 import streamlit as st
 import torch
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
-import pandas as pd
 import tempfile
 import os
 import speech_recognition as sr
@@ -10,15 +8,13 @@ import wave
 import contextlib
 import math
 from moviepy.editor import AudioFileClip
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import gzip
+from transformers import AutoTokenizer
+import pickle
+import tensorflow as tf
+import cv2
 
 # Define the video transcriber class
 class VideoTranscriber:
-    def __init__(self):
-        self.data = []
-
     def extract_audio(self, video_file, audio_file):
         # Extract audio from the video using moviepy
         audioclip = AudioFileClip(video_file)
@@ -50,131 +46,95 @@ class VideoTranscriber:
             except sr.RequestError as e:
                 print(f"Could not request results from Google Speech Recognition service; {e}")
 
-        return transcription.strip(), duration
+        return transcription.strip()
 
-    def process_video(self, video_file, idx):
+    def process_video(self, video_file):
         # Process a single video file to extract and transcribe audio
-        audio_file = f"transcribed_speech_{idx}.wav"
+        audio_file = "transcribed_speech.wav"
         self.extract_audio(video_file, audio_file)
-        transcription, duration = self.transcribe_audio(audio_file)
+        transcription = self.transcribe_audio(audio_file)
         os.remove(audio_file)  # Clean up temporary audio file
-        return {
-            'Index': idx,
-            'Video File': video_file,
-            'Length (seconds)': duration,
-            'Transcription': transcription
-        }
+        return transcription
 
-    def process_videos(self, video_files):
-        # Process multiple video files concurrently
-        with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(self.process_video, video_file, idx) for idx, video_file in enumerate(video_files)]
-            for future in as_completed(futures):
-                result = future.result()
-                self.data.append(result)
-
-    def save_to_dataframe(self):
-        # Save results to a DataFrame
-        return pd.DataFrame(self.data)
-
-# Define a PyTorch dataset class for sentiment analysis
-class SentimentDataset(Dataset):
-    def __init__(self, texts, tokenizer):
-        self.texts = texts
-        self.tokenizer = tokenizer
-
-    def __len__(self):
-        return len(self.texts)
-
-    def __getitem__(self, idx):
-        text = self.texts[idx]
-        encoded_text = self.tokenizer(text, padding='max_length', truncation=True, max_length=128, return_tensors='pt')
-        encoded_text = {key: value.squeeze(0) for key, value in encoded_text.items()}
-        return encoded_text
-
-# Define a function to process texts in batches
-def process_in_batches(texts, model, tokenizer, batch_size, device):
-    dataset = SentimentDataset(texts, tokenizer)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    all_outputs = []
-    model.eval()
-
-    with torch.no_grad():
-        for batch in dataloader:
-            inputs = {key: value.to(device) for key, value in batch.items()}
-            outputs = model(**inputs)
-            all_outputs.append(outputs.logits.cpu().numpy())
-
-    return np.concatenate(all_outputs, axis=0)
-
-def load_model_from_gzipped_pth(gzipped_model_path):
-    # Load the quantized model from a gzipped .pth file
-    with gzip.open(gzipped_model_path, 'rb') as f:
-        model_state_dict = torch.load(f, map_location=torch.device('cpu'))
-    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=3)
-    model.load_state_dict(model_state_dict)
-    return model
+# Define the frame processing function
+def preprocess_frames(video_path, n_frames, height, width):
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    while len(frames) < n_frames:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.resize(frame, (width, height))  # Resize frames to specified size
+        frame = frame / 255.0  # Normalize
+        frames.append(frame)
+    cap.release()
+    if len(frames) < n_frames:
+        frames.extend([np.zeros((height, width, 3))] * (n_frames - len(frames)))  # Pad with zeros
+    frames = np.array(frames)
+    return frames
 
 # Initialize the Streamlit app
 def main():
     st.title("Video Transcription and Sentiment Analysis App")
-    st.write("Upload a gzipped quantized BERT model file (.pth.gz) and video files to perform sentiment analysis on the transcriptions.")
+    st.write("Upload a trained model (.pkl) and a video file to perform sentiment analysis on the transcription.")
 
-    # File uploader for the gzipped BERT model
-    uploaded_model_file = st.file_uploader("Upload a quantized BERT model (.pth.gz) file", type=["gz"])
+    # File uploader for the model
+    uploaded_model_file = st.file_uploader("Upload a trained model (.pkl) file", type=["pkl"])
 
-    # File uploader for videos
-    uploaded_videos = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
+    # File uploader for a video
+    uploaded_video = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
-    if uploaded_model_file and uploaded_videos:
+    if uploaded_model_file and uploaded_video:
         # Save the uploaded model to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pth.gz') as temp_model_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_model_file:
             temp_model_file.write(uploaded_model_file.read())
-            gzipped_model_path = temp_model_file.name
+            model_path = temp_model_file.name
 
-        # Load the tokenizer
+        # Load the trained model from the uploaded file
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+
+        # Initialize the tokenizer
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-
-        # Load the trained model state from the uploaded file
-        model = load_model_from_gzipped_pth(gzipped_model_path)
-
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model.to(device)
 
         # Initialize the transcriber
         transcriber = VideoTranscriber()
 
-        # Process each uploaded video file
-        for idx, uploaded_video in enumerate(uploaded_videos):
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
-                temp_video_file.write(uploaded_video.read())
-                temp_video_path = temp_video_file.name
+        # Save the uploaded video to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video_file:
+            temp_video_file.write(uploaded_video.read())
+            temp_video_path = temp_video_file.name
 
-            # Process the video file
-            result = transcriber.process_video(temp_video_path, idx)
+        # Process the video file
+        transcription = transcriber.process_video(temp_video_path)
+        st.write("**Transcription:**")
+        st.write(transcription)
 
-            # Perform sentiment analysis on the transcription
-            transcription = result['Transcription']
-            if transcription:
-                st.write("Transcription obtained, analyzing sentiment...")
-                sentiment_outputs = process_in_batches([transcription], model, tokenizer, batch_size=1, device=device)
-                predicted_label = np.argmax(sentiment_outputs, axis=1)[0]
-                sentiment_classes = [0,1,2]
-                sentiment = sentiment_classes[predicted_label]
+        # Extract text features using the tokenizer
+        encoded_text = tokenizer(transcription, padding='max_length', truncation=True, max_length=128, return_tensors='np')
+        text_features = np.array(encoded_text['input_ids']).squeeze()
 
-                # Display the transcription and sentiment results
-                st.write(f"**Video File:** {uploaded_video.name}")
-                st.write(f"**Length (seconds):** {result['Length (seconds)']}")
-                st.write("**Transcription:**")
-                st.write(result['Transcription'])
-                st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
+        # Preprocess video frames
+        HEIGHT, WIDTH, N_FRAMES = 112, 112, 3
+        video_frames = preprocess_frames(temp_video_path, N_FRAMES, HEIGHT, WIDTH)
 
-            # Clean up temporary video file
-            os.remove(temp_video_path)
+        # Reshape text features to match the expected input shape
+        text_features = text_features.reshape((1, -1))
 
-        # Clean up the temporary model file
-        os.remove(gzipped_model_path)
+        # Make predictions
+        predictions = model.predict([np.array([video_frames]), text_features])
+        predicted_label = np.argmax(predictions, axis=1)[0]
+
+        # Define sentiment classes
+        sentiment_classes = [0, 1, 2]
+        sentiment = sentiment_classes[predicted_label]
+
+        # Display the sentiment results
+        st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
+
+        # Clean up temporary files
+        os.remove(temp_video_path)
+        os.remove(model_path)
 
 if __name__ == "__main__":
     main()
