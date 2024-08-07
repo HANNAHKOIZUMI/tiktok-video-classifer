@@ -9,3 +9,4 @@ tensorflow
 SpeechRecognition
 moviepy
 pandas
+einops
