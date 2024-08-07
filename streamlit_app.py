@@ -169,12 +169,14 @@ def main():
         encoded_text = tokenizer(transcription, padding='max_length', truncation=True, max_length=128, return_tensors='np')
         text_features = np.array(encoded_text['input_ids']).squeeze()
 
+        # Adjust text features to match the expected input shape (reduce to 3 features)
+        # You can use the mean of embeddings or some other reduction strategy based on training
+        text_features = text_features[:3]  # For demonstration, reduce to 3 features
+        text_features = text_features.reshape((1, 3))
+
         # Preprocess video frames
         HEIGHT, WIDTH, N_FRAMES = 112, 112, 3
         video_frames = preprocess_frames(temp_video_path, N_FRAMES, HEIGHT, WIDTH)
-
-        # Reshape text features to match the expected input shape
-        text_features = text_features.reshape((1, -1))
 
         # Make predictions
         predictions = model.predict([np.array([video_frames]), text_features])
