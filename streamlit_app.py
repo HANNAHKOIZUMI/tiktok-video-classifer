@@ -13,6 +13,7 @@ from moviepy.editor import AudioFileClip
 from transformers import AutoTokenizer
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pickle
+import gzip
 
 # Define the video transcriber class
 class VideoTranscriber:
@@ -108,29 +109,33 @@ def process_in_batches(texts, model, tokenizer, batch_size, device):
 
     return np.concatenate(all_outputs, axis=0)
 
+def load_model_from_gzipped_pkl(gzipped_model_path):
+    with gzip.open(gzipped_model_path, 'rb') as f:
+        model = pickle.load(f)
+    return model
+
 # Initialize the Streamlit app
 def main():
     st.title("Video Transcription and Sentiment Analysis App")
-    st.write("Upload a BERT model file (.pkl) and video files to perform sentiment analysis on the transcriptions.")
+    st.write("Upload a gzipped BERT model file (.pkl.gz) and video files to perform sentiment analysis on the transcriptions.")
 
-    # File uploader for the BERT model
-    uploaded_model_file = st.file_uploader("Upload a BERT model (.pkl) file", type=["pkl"])
+    # File uploader for the gzipped BERT model
+    uploaded_model_file = st.file_uploader("Upload a BERT model (.pkl.gz) file", type=["gz"])
 
     # File uploader for videos
     uploaded_videos = st.file_uploader("Choose video files", type=["mp4", "mov", "avi"], accept_multiple_files=True)
 
     if uploaded_model_file and uploaded_videos:
         # Save the uploaded model to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_model_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl.gz') as temp_model_file:
             temp_model_file.write(uploaded_model_file.read())
-            model_path = temp_model_file.name
+            gzipped_model_path = temp_model_file.name
 
         # Load the tokenizer
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
         # Load the trained model state from the uploaded file
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+        model = load_model_from_gzipped_pkl(gzipped_model_path)
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model.to(device)
@@ -167,7 +172,7 @@ def main():
             os.remove(temp_video_path)
 
         # Clean up the temporary model file
-        os.remove(model_path)
+        os.remove(gzipped_model_path)
 
 if __name__ == "__main__":
     main()
