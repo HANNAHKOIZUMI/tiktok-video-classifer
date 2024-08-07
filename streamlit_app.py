@@ -1,5 +1,4 @@
 import streamlit as st
-import torch
 import numpy as np
 import tempfile
 import os
@@ -9,7 +8,6 @@ import contextlib
 import math
 from moviepy.editor import AudioFileClip
 from transformers import AutoTokenizer
-import pickle
 import tensorflow as tf
 import cv2
 
@@ -76,23 +74,22 @@ def preprocess_frames(video_path, n_frames, height, width):
 # Initialize the Streamlit app
 def main():
     st.title("Video Transcription and Sentiment Analysis App")
-    st.write("Upload a trained model (.pkl) and a video file to perform sentiment analysis on the transcription.")
+    st.write("Upload a trained model (.h5) and a video file to perform sentiment analysis on the transcription.")
 
     # File uploader for the model
-    uploaded_model_file = st.file_uploader("Upload a trained model (.pkl) file", type=["pkl"])
+    uploaded_model_file = st.file_uploader("Upload a trained model (.h5) file", type=["h5"])
 
     # File uploader for a video
     uploaded_video = st.file_uploader("Choose a video file", type=["mp4", "mov", "avi"])
 
     if uploaded_model_file and uploaded_video:
         # Save the uploaded model to a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as temp_model_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as temp_model_file:
             temp_model_file.write(uploaded_model_file.read())
             model_path = temp_model_file.name
 
         # Load the trained model from the uploaded file
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+        model = tf.keras.models.load_model(model_path, custom_objects={"ResizeVideo": ResizeVideo, "Conv2Plus1D": Conv2Plus1D, "Project": Project, "ResidualMain": ResidualMain})
 
         # Initialize the tokenizer
         tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
@@ -126,7 +123,7 @@ def main():
         predicted_label = np.argmax(predictions, axis=1)[0]
 
         # Define sentiment classes
-        sentiment_classes = [0, 1, 2]
+        sentiment_classes = [0,1,2]
         sentiment = sentiment_classes[predicted_label]
 
         # Display the sentiment results
