@@ -6,3 +6,6 @@ openai-whisper
 opencv-python-headless
 ffmpeg-python
 tensorflow
+SpeechRecognition
+moviepy
+pandas
