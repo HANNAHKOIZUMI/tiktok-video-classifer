@@ -169,9 +169,10 @@ def main():
         encoded_text = tokenizer(transcription, padding='max_length', truncation=True, max_length=128, return_tensors='np')
         text_features = np.array(encoded_text['input_ids']).squeeze()
 
-        # Adjust text features to match the expected input shape (reduce to 3 features)
-        # Use a simple reduction strategy, such as mean pooling
-        text_features = np.mean(text_features.reshape(-1, 42), axis=1)[:3]
+        # Adjust text features to match the expected input shape
+        # Use a simple strategy to get 3 features from the tokenized text
+        # Here we are taking the first, middle, and last token features for simplicity
+        text_features = text_features[[0, len(text_features)//2, -1]]
         text_features = text_features.reshape((1, 3))
 
         # Preprocess video frames
@@ -181,13 +182,15 @@ def main():
         # Make predictions
         predictions = model.predict([np.array([video_frames]), text_features])
         predicted_label = np.argmax(predictions, axis=1)[0]
+        confidence_score = predictions[0][predicted_label]  # Extract confidence score for the predicted label
 
         # Define sentiment classes
         sentiment_classes = ["Neutral", "Anti-Biden", "Pro-Biden"]
         sentiment = sentiment_classes[predicted_label]
 
-        # Display the sentiment results
+        # Display the sentiment results with confidence score
         st.write(f"**Predicted Sentiment:** {sentiment} (Class {predicted_label})")
+        st.write(f"**Confidence Score:** {confidence_score:.2f}")
 
         # Clean up temporary files
         os.remove(temp_video_path)
