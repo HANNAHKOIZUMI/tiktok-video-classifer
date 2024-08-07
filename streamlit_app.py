@@ -22,8 +22,15 @@ if uploaded_video is not None and uploaded_model is not None:
         temp_video_file.write(uploaded_video.read())
         temp_video_path = temp_video_file.name
 
-    # Load the model using pickle
-    model = pickle.load(uploaded_model)
+    try:
+        # Load the model using pickle
+        model = pickle.load(uploaded_model)
+    except ModuleNotFoundError as e:
+        st.error(f"Failed to load the model. Missing module: {e.name}. Please ensure all dependencies are installed.")
+        st.stop()
+    except Exception as e:
+        st.error(f"An error occurred while loading the model: {str(e)}")
+        st.stop()
 
     # Constants
     N_FRAMES = 3
