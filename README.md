@@ -1,6 +1,21 @@
 # TikTok Video Classifier
-
+### Overview
 This repository contains a pipeline for processing videos stored in an Amazon S3 bucket. The pipeline includes transcribing videos using Amazon Transcribe, cleaning the transcriptions, running the cleaned data through a DistilBERT model for classification, and using a hybrid model combining text features with a TensorFlow model. Additionally, a Streamlit app is provided for processing and classifying individual video files.
+
+### Goals
+1. Classify videos into three categories: neutral (0), anti-Biden (1), pro-Biden (2)
+2. Bulk classify videos into categories to save on labor
+3. Create a user-friendly interface to demostrate the usage of the classification model on one video. 
+
+### Results
+Dataset: 550 videos (balanced between the three categories), manually categorized into one of the three categories to create a training and validation set. Stored in a S3 bucket. 
+Distilbert model validation accuracy: 79%
+Hybrid model validation accuracy: 78%
+
+### Future Improvements
+1. Automate uploading videos to the s3 bucket
+2. Improve the confidence scores of the single video classifier connected to streamlit
+3. Create and train with a new dataset with Kamala Harris videos
 
 ## Table of Contents
 
@@ -15,11 +30,11 @@ This repository contains a pipeline for processing videos stored in an Amazon S3
 
 ## Transcribing Videos
 
-The transcription process? uses Amazon Transcribe to convert video files stored in an S3 bucket into text. See [Bulk_Transcribe_AWS.ipynb](Bulk_Transcribe_AWS.ipynb) for the code.
+The transcription process uses Amazon Transcribe to convert video files stored in an S3 bucket and stores the transcriptions in a separate S3 bucket. The code also exports the transcriptions to a dataframe and an excel. See [Bulk_Transcribe_AWS.ipynb](Bulk_Transcribe_AWS.ipynb) for the code.
 
 ## Cleaning Transcriptions
 
-Once transcriptions are completed, they are cleaned and organized into a DataFrame. See [clean_transcriptions.py](Bulk_Transcribe_AWS.ipynb) for implementation details.
+This notebook combines the training dataframe with the video transcriptions, it uses the names as an index to join the dataframes. See [clean_transcriptions.py](Bulk_Transcribe_AWS.ipynb) for implementation details.
 
 ## Running DistilBERT Model
 
