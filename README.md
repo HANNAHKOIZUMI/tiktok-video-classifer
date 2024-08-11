@@ -19,7 +19,7 @@ The transcription process? uses Amazon Transcribe to convert video files stored 
 
 ## Cleaning Transcriptions
 
-Once transcriptions are completed, they are cleaned and organized into a DataFrame. See [clean_transcriptions.py](scripts/clean_transcriptions.py) for implementation details.
+Once transcriptions are completed, they are cleaned and organized into a DataFrame. See [clean_transcriptions.py](Bulk_Transcribe_AWS.ipynb) for implementation details.
 
 ## Running DistilBERT Model
 
