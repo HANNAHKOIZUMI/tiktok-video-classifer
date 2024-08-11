@@ -1,7 +1,5 @@
 # TikTok Video Classifier
 
-# Video Processing Pipeline
-
 This repository contains a pipeline for processing videos stored in an Amazon S3 bucket. The pipeline includes transcribing videos using Amazon Transcribe, cleaning the transcriptions, running the cleaned data through a DistilBERT model for classification, and using a hybrid model combining text features with a TensorFlow model. Additionally, a Streamlit app is provided for processing and classifying individual video files.
 
 ## Table of Contents
@@ -17,30 +15,42 @@ This repository contains a pipeline for processing videos stored in an Amazon S3
 
 ## Transcribing Videos
 
-The transcription process uses Amazon Transcribe to convert video files stored in an S3 bucket into text.
+The transcription process uses Amazon Transcribe to convert video files stored in an S3 bucket into text. For details, see [Bulk_Transcribe_AWS.ipynb].
 
-### Code Example
+## Cleaning Transcriptions
 
-```python
-import boto3
+Once transcriptions are completed, they are cleaned and organized into a DataFrame. See [clean_transcriptions.py](scripts/clean_transcriptions.py) for implementation details.
 
-def transcribe_video(bucket_name, video_file, job_name, region='us-east-1'):
-    transcribe = boto3.client('transcribe', region_name=region)
-    job_uri = f's3://{bucket_name}/{video_file}'
-    transcribe.start_transcription_job(
-        TranscriptionJobName=job_name,
-        Media={'MediaFileUri': job_uri},
-        MediaFormat='mp4',
-        LanguageCode='en-US'
-    )
-    while True:
-        status = transcribe.get_transcription_job(TranscriptionJobName=job_name)
-        if status['TranscriptionJob']['TranscriptionJobStatus'] in ['COMPLETED', 'FAILED']:
-            break
-        print("Waiting for transcription to complete...")
-    if status['TranscriptionJob']['TranscriptionJobStatus'] == 'COMPLETED':
-        transcript_url = status['TranscriptionJob']['Transcript']['TranscriptFileUri']
-        return transcript_url
+## Running DistilBERT Model
+
+The transcriptions are fed into a DistilBERT model for classification. See [distilbert_classification.py](scripts/distilbert_classification.py) for the code.
+
+## Hybrid Model Processing
+
+The text features are further processed with a hybrid model combining the text features with a TensorFlow-based model for enhanced predictions. Refer to [hybrid_model.py](scripts/hybrid_model.py) for more information.
+
+## Streamlit App
+
+A Streamlit app allows for uploading a video and receiving a class prediction based on the trained models. See [app.py](app.py) for the full implementation.
+
+## Requirements
+
+- Python 3.x
+- Boto3
+- Torch
+- Transformers
+- TensorFlow
+- OpenCV
+- Pandas
+- Streamlit
+
+## Installation
+
+Install the required packages using pip:
+
+```bash
+pip install boto3 torch transformers tensorflow opencv-python-headless pandas streamlit
+
 
 # Example usage
 bucket_name = 'your-bucket-name'
