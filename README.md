@@ -15,7 +15,7 @@ This repository contains a pipeline for processing videos stored in an Amazon S3
 
 ## Transcribing Videos
 
-The transcription process? uses Amazon Transcribe to convert video files stored in an S3 bucket into text. For details, see [Bulk_Transcribe_AWS.ipynb](scripts/Bulk_Transcribe_AWS.ipynb).
+The transcription process? uses Amazon Transcribe to convert video files stored in an S3 bucket into text. See [Bulk_Transcribe_AWS.ipynb](scripts/Bulk_Transcribe_AWS.ipynb) for the code.
 
 ## Cleaning Transcriptions
 
