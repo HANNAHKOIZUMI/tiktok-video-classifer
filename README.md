@@ -34,19 +34,19 @@ The transcription process uses Amazon Transcribe to convert video files stored i
 
 ## Cleaning Transcriptions
 
-This notebook combines the training dataframe with the video transcriptions, it uses the names as an index to join the dataframes. See [clean_transcriptions.py](Bulk_Transcribe_AWS.ipynb) for implementation details.
+This notebook combines the training dataframe with the video transcriptions, it uses the names as an index to join the dataframes. See [Bulk_Clean_Transcriptions.ipynb](Bulk_Transcribe_AWS.ipynb) for implementation details.
 
 ## Running DistilBERT Model
 
-The transcriptions are fed into a DistilBERT model for classification. See [distilbert_classification.py](scripts/distilbert_classification.py) for the code.
+The transcriptions are fed into a DistilBERT model for classification. See [Bulk_Clean_Transcriptions.ipynb](Bulk_Clean_Transcriptions.ipynb) for the code.
 
 ## Hybrid Model Processing
 
-The text features are further processed with a hybrid model combining the text features with a TensorFlow-based model for enhanced predictions. Refer to [hybrid_model.py](scripts/hybrid_model.py) for more information.
+The text features are further processed with a hybrid model combining the text features with a TensorFlow-based model for enhanced predictions. Refer to [hybrid_model_final.ipynb](hybrid_model_final.ipynb) for more information.
 
 ## Streamlit App
 
-A Streamlit app allows for uploading a video and receiving a class prediction based on the trained models. See [app.py](app.py) for the full implementation.
+A Streamlit app allows for uploading a video and receiving a class prediction based on the trained models. See [streamlit_app.py](streamlit_app.py) for the full implementation.
 
 ## Requirements
 
