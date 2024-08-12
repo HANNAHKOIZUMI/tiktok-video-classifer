@@ -42,7 +42,8 @@ The transcriptions are fed into a DistilBERT model for classification. See [Bulk
 
 ## Hybrid Model Processing
 
-The text features are further processed with a hybrid model combining the text features with a TensorFlow-based model for enhanced predictions. Refer to [hybrid_model_final.ipynb](hybrid_model_final.ipynb) for more information.
+The text features are further processed with a hybrid model combining the text features with a TensorFlow-based model for enhanced predictions. Refer to [hybrid_model_final.ipynb](hybrid_model_final.ipynb) for more information. The architecture for the model:
+![Screenshot 2024-08-11 at 9 40 05 PM](https://github.com/user-attachments/assets/024e586c-488d-4371-a816-5e8c2e8206ff)
 
 ## Streamlit App
 
