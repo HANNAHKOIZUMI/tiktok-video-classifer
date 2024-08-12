@@ -63,12 +63,15 @@ A Streamlit app allows for uploading a video and receiving a class prediction ba
 # Process a single video
 
 ```bash
-
+import pandas as pd
+import torch
 import cv2
 import numpy as np
-import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+model_name = "distilbert-base-uncased"
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=3)
+model_path = 'hybrid_model.pth'
 
 N_FRAMES = 3
 HEIGHT = 112
