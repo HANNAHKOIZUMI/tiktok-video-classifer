@@ -60,16 +60,6 @@ A Streamlit app allows for uploading a video and receiving a class prediction ba
 - Pandas
 - Streamlit
 
-## Installation
-
-Install the required packages using pip:
+# Process a single video
 
 ```bash
-pip install boto3 torch transformers tensorflow opencv-python-headless pandas streamlit
-
-
-# Example usage
-bucket_name = 'your-bucket-name'
-video_file = 'your-video.mp4'
-job_name = 'your-job-name'
-transcript_url = transcribe_video(bucket_name, video_file, job_name)
