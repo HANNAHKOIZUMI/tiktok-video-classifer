@@ -25,8 +25,8 @@ Hybrid model validation accuracy: 78%
 4. [Hybrid Model Processing](#hybrid-model-processing)
 5. [Streamlit App](#streamlit-app)
 6. [Requirements](#requirements)
-7. [Installation](#installation)
-8. [Usage](#usage)
+7. [Installation](#Installation)
+8. [Process a single video](#Process a single video)
 
 ## Transcribing Videos
 
@@ -60,7 +60,12 @@ A Streamlit app allows for uploading a video and receiving a class prediction ba
 - Pandas
 - Streamlit
 
-# Process a single video
+## Installation
+```bash
+pip install -r requirements.txt
+```
+
+## Process a single video
 
 ```bash
 import pandas as pd
@@ -153,3 +158,4 @@ def analyze_video(video_path, model, text_features):
 
 predicted_class, confidence = analyze_video(video_path, model, text_features)
 print(f"Predicted class: {predicted_class}, Confidence: {confidence:.2f}")
+```
