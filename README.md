@@ -26,7 +26,7 @@ Hybrid model validation accuracy: 78%
 5. [Streamlit App](#streamlit-app)
 6. [Requirements](#requirements)
 7. [Installation](#Installation)
-8. [Process a single video](#Process a single video)
+8. [Process a single video](#Process-a-single-video)
 
 ## Transcribing Videos
 
